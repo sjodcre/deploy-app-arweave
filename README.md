@@ -34,3 +34,8 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+
+## Deploy on Arweave (Static Site)
+1. Run `yarn build` or `npm run build`. The out folder will appear and then we are ready to deploy!
+2. Run `yarn global add arkb` or `npm install -g arkb`. We will use arkb to deploy the files.
+3. Next. run `arkb deploy out --wallet /PATH_TO_WALLET.json --bundle`. Make sure you have AR in your wallet as it will cost you, though very minimal.
