@@ -1,113 +1,250 @@
-import Image from "next/image";
+"use client"
+import { useEffect, useState, ChangeEvent } from 'react';
+import Image from 'next/image';
+import Arweave from 'arweave';
+import { useRouter } from 'next/navigation'; // Adjusting for Next.js App Router
+// import styles from './page.module.css'; // Adjust your CSS import path
+
+// Define types for the state variables
+interface Message {
+  message: string;
+  color: string;
+}
+
+interface Gif {
+  node: {
+    id: string;
+    tags: { name: string; value: string }[];
+    data: { size: number; type: string };
+  };
+}
 
 export default function Home() {
+  const [selectedFile, setSelectedFile] = useState<Buffer | undefined>();
+  const [img, setImg] = useState<string | undefined>();
+  const [message, setMessage] = useState<Message | undefined>();
+  const [currentWallet, setCurrentWallet] = useState<string | undefined>();
+  const [gifs, setGifs] = useState<Gif[] | undefined>();
+
+  const arweave = Arweave.init({
+    host: 'arweave.net',
+    port: 443,
+    protocol: 'https',
+    timeout: 3000000,
+  });
+
+  const getGifs = async (wallet?: string) => {
+    const queryWallet = wallet ?? currentWallet;
+    if (!queryWallet) return;
+    
+    const gifs = await arweave.api.post('graphql', {
+      query: `query {
+        transactions(
+          owners: ["${queryWallet}"]
+          tags: [{
+              name: "App-Name",
+              values: ["PbillingsbyGifs"]
+            },
+            {
+              name: "Content-Type",
+              values: ["image/gif"]
+            }]
+        ) {
+          edges {
+            node {
+              id
+              tags {
+                name
+                value
+              }
+              data {
+                size
+                type
+              }
+            }
+          }
+        }
+      }`,
+    });
+    setGifs(gifs.data.data.transactions.edges);
+  };
+
+  const fetchWallet = async () => {
+    const permissions = await window.arweaveWallet.getPermissions();
+    if (permissions.length) {
+      const wallet = await window.arweaveWallet.getActiveAddress();
+      setCurrentWallet(wallet);
+    }
+  };
+
+  useEffect(() => {
+    fetchWallet().catch(console.error);
+
+    if (currentWallet) {
+      getGifs(currentWallet);
+    }
+  }, [currentWallet]);
+
+  const connect = async () => {
+    // await window.arweaveWallet.connect('ACCESS_ADDRESS');
+    await window.arweaveWallet.connect(['ACCESS_ADDRESS']);
+
+    setMessage({
+      message: '...connecting',
+      color: 'yellow',
+    });
+
+    const wallet = await window.arweaveWallet.getActiveAddress();
+    setCurrentWallet(wallet);
+    getGifs(wallet);
+    setMessage(undefined);
+  };
+
+  const disconnect = async () => {
+    await window.arweaveWallet.disconnect();
+    window.location.reload();
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const reader = new FileReader();
+    const file = e.target.files?.[0];
+
+    if (file && file.type !== 'image/gif') {
+      setMessage({ message: 'File must be a gif', color: 'red' });
+      return;
+    }
+
+    if (file) {
+      setMessage(undefined);
+      reader.onloadend = () => {
+        if (reader.result) {
+          setSelectedFile(Buffer.from(reader.result as ArrayBuffer));
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      const objectUrl = URL.createObjectURL(file);
+      setImg(objectUrl);
+    }
+  };
+
+  const uploadGif = async () => {
+    if (!selectedFile) return;
+
+    try {
+      const tx = await arweave.createTransaction(
+        {
+          data: selectedFile,
+        },
+        'use_wallet'
+      );
+
+      tx.addTag('Content-Type', 'image/gif');
+      tx.addTag('App-Name', 'PbillingsbyGifs');
+
+      await arweave.transactions.sign(tx, 'use_wallet');
+      setMessage({
+        message: 'Uploading to Arweave.',
+        color: 'yellow',
+      });
+
+      const res = await arweave.transactions.post(tx);
+
+      setMessage({
+        message: 'Upload successful. Gif available after confirmation.',
+        color: 'green',
+      });
+      getGifs();
+    } catch (error) {
+      console.error('Error with upload:', error);
+      // setMessage({
+      //   message: `Error: ${error.message}`,
+      //   color: 'red',
+      // });
+      if (error instanceof Error) {
+        setMessage({
+          message: `Error: ${error.message}`,
+          color: 'red',
+        });
+      } else {
+        setMessage({
+          message: 'An unknown error occurred',
+          color: 'red',
+        });
+      }
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div >
+      <div>
+        {currentWallet ? (
+          <div>
+            <p>Owner: {currentWallet}</p>
+            <button onClick={disconnect}>Disconnect</button>
+          </div>
+        ) : (
+          <button onClick={connect}>Connect to view uploaded gifs</button>
+        )}
+        <div
+          style={{
+            textAlign: 'center',
+            maxWidth: '25rem',
+            margin: '0 auto',
+            height: '25rem',
+          }}
+          className="main"
+        >
+          <input type="file" onChange={handleFileChange} />
+          {message && <p style={{ color: message.color }}>{message.message}</p>}
+          {img && (
+            <div>
+              {selectedFile && (
+                <div>
+                  <Image
+                    src={img}
+                    width={250}
+                    height={250}
+                    alt="local preview"
+                  />
+                  <br />
+                  <p>
+                    <button onClick={() => uploadGif()}>Upload GIF</button>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div>
+          {gifs && <p style={{ textAlign: 'center' }}>Gifs: {gifs.length}</p>}
+          <div
+            style={{
+              display: 'flex',
+              overflow: 'scroll',
+              maxWidth: '40vw',
+              margin: '0 auto',
+              border: '1px solid #eee',
+            }}
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            {gifs &&
+              gifs.map((gif) => (
+                <div key={gif.node.id} style={{ margin: '2rem' }}>
+                  <a
+                    href={`https://arweave.net/${gif.node.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <img
+                      src={`https://arweave.net/${gif.node.id}`}
+                      style={{ maxWidth: '10rem' }}
+                      alt={`Gif ${gif.node.id}`}
+                    />
+                  </a>
+                </div>
+              ))}
+          </div>
         </div>
       </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
 }
