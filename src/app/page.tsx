@@ -19,7 +19,7 @@ interface Gif {
   };
 }
 
-export default function Home() {
+export default function WarpPage() {
   const [selectedFile, setSelectedFile] = useState<Buffer | undefined>();
   const [img, setImg] = useState<string | undefined>();
   const [message, setMessage] = useState<Message | undefined>();

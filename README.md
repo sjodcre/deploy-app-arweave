@@ -39,3 +39,5 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
 1. Run `yarn build` or `npm run build`. The out folder will appear and then we are ready to deploy!
 2. Run `yarn global add arkb` or `npm install -g arkb`. We will use arkb to deploy the files.
 3. Next. run `arkb deploy out --wallet /PATH_TO_WALLET.json --bundle`. Make sure you have AR in your wallet as it will cost you, though very minimal.
+
+*replace-in-file package - older version is used*
