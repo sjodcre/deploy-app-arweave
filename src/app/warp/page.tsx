@@ -1,17 +1,18 @@
 "use client"
-import Head from 'next/head';
-import styles from '../styles/Home.module.css';
-import { useState, useEffect } from 'react';
-import { JWKInterface, WarpFactory } from 'warp-contracts';
-import { ArweaveSigner } from 'warp-contracts-plugin-deploy';
-import cookbook2 from '../../../.secrets/cookbook2.json'
 
+import { useState, useEffect } from 'react';
+import { ArweaveSigner, DeployPlugin } from 'warp-contracts-plugin-deploy';
+import cookbook2 from '../../../.secrets/cookbook2.json'
+import dynamic from 'next/dynamic';
+// @ts-ignore
+import { defaultCacheOptions, JWKInterface, WarpFactory } from 'warp-contracts';
+
+const warp = WarpFactory.forMainnet({ ...defaultCacheOptions, inMemory: true }).use(new DeployPlugin());
 
 const CONTRACT_SRC = "X3AqGjDsRb7wXU_fguhCNlxwONxNdZMKYRccllgrATI";  // Replace with your actual contract ID
 
-export default function Home() {
+export default function Warp() {
   const [clicks, setClicks] = useState<number | string>();  // Use number for clicks, string for loading state
-  const warp = WarpFactory.forMainnet();
   const signer = new ArweaveSigner(cookbook2 as JWKInterface);
 
   const contract = warp.contract(CONTRACT_SRC).connect(signer);
@@ -41,20 +42,25 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
-      <main className="flex flex-col items-center justify-center space-y-4">
-        <div className="flex space-x-4">
-          <button onClick={getClicks} className="px-4 py-2 bg-blue-500 text-white rounded">
-            Get clicks
-          </button>
-          <button onClick={addClick} className="px-4 py-2 bg-green-500 text-white rounded">
-            Add Click
-          </button>
+    <>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="flex space-x-4">
+            <button onClick={getClicks} className="px-4 py-2 bg-blue-500 text-white rounded">
+              Get clicks
+            </button>
+            <button onClick={addClick} className="px-4 py-2 bg-green-500 text-white rounded">
+              Add Click
+            </button>
+          </div>
+          <div>
+            {clicks !== undefined && <p className="text-lg font-semibold">{clicks} clicks</p>}
+          </div>
         </div>
-        <div>
-          {clicks !== undefined && <p className="text-lg font-semibold">{clicks} clicks</p>}
-        </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
+
+// export default dynamic(() => Promise.resolve(Warp), { ssr: false });
+

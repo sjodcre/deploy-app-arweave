@@ -19,7 +19,8 @@ interface Gif {
   };
 }
 
-export default function WarpPage() {
+// export default function WarpPage() {
+const Home: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<Buffer | undefined>();
   const [img, setImg] = useState<string | undefined>();
   const [message, setMessage] = useState<Message | undefined>();
@@ -246,5 +247,8 @@ export default function WarpPage() {
         </div>
       </div>
     </div>
+    
   );
 }
+
+export default Home;
