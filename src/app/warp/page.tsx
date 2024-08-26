@@ -6,6 +6,8 @@ import cookbook2 from '../../../.secrets/cookbook2.json'
 import dynamic from 'next/dynamic';
 // @ts-ignore
 import { defaultCacheOptions, JWKInterface, WarpFactory } from 'warp-contracts';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const warp = WarpFactory.forMainnet({ ...defaultCacheOptions, inMemory: true }).use(new DeployPlugin());
 
@@ -14,6 +16,7 @@ const CONTRACT_SRC = "X3AqGjDsRb7wXU_fguhCNlxwONxNdZMKYRccllgrATI";  // Replace 
 export default function Warp() {
   const [clicks, setClicks] = useState<number | string>();  // Use number for clicks, string for loading state
   const signer = new ArweaveSigner(cookbook2 as JWKInterface);
+  const router = useRouter();
 
   const contract = warp.contract(CONTRACT_SRC).connect(signer);
 
@@ -41,6 +44,10 @@ export default function Warp() {
     }
   };
 
+  const handleGoBack = () => {
+    router.push('/'); // Navigates back to the main page
+  };
+
   return (
     <>
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
@@ -58,6 +65,18 @@ export default function Warp() {
           </div>
         </div>
       </div>
+      {/* <Link href="/">
+        <button className="px-4 py-2 bg-green-500 text-white rounded">
+          Back to Main Page
+        </button>
+      </Link> */}
+      <div>
+      <h1 className="text-3xl font-bold mb-4">Warp Page</h1>
+      <button onClick={handleGoBack} className="px-4 py-2 bg-green-500 text-white rounded">
+        Back to Main Page
+      </button>
+    </div>
+
     </>
   );
 }
