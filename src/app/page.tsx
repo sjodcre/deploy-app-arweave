@@ -3,6 +3,7 @@ import { useEffect, useState, ChangeEvent } from 'react';
 import Image from 'next/image';
 import Arweave from 'arweave';
 import { useRouter } from 'next/navigation'; // Adjusting for Next.js App Router
+import Link from 'next/link';
 // import styles from './page.module.css'; // Adjust your CSS import path
 
 // Define types for the state variables
@@ -246,6 +247,11 @@ const Home: React.FC = () => {
           </div>
         </div>
       </div>
+      <Link href="/warp/">
+        <button className="px-4 py-2 bg-blue-500 text-white rounded">
+          Go to Warp Page
+        </button>
+      </Link>
     </div>
     
   );

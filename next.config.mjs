@@ -12,8 +12,7 @@
 const nextConfig =  {
   reactStrictMode: false,
   trailingSlash: true,
-  assetPrefix: '/',
-  swcMinify: false,
+  assetPrefix: "/",
   output: 'export',
   webpack: (config, { isServer }) => {
     if (isServer) {
